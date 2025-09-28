@@ -302,30 +302,25 @@ class MemoryGraph:
             params["n_embedding"] = n_embedding
 
             results = []
-            for match_fragment in [
-                # Source matches
-                f"MATCH (source:Entity {{{node_props_str}}})-[r:CONNECTED_TO]->(target:Entity {{{node_props_str}}})",
-                # Target matches
-                f"MATCH (source:Entity {{{node_props_str}}})-[r:CONNECTED_TO]->(target:Entity {{{node_props_str}}})",
-            ]:
+            match_fragment = f"MATCH (source:Entity {{{node_props_str}}})-[r:CONNECTED_TO]->(target:Entity {{{node_props_str}}})"
 
-                for direction in ["source", "target"]:
-                    if direction == "source":
-                        query_fragment = f"""
-                        {match_fragment}
-                        WHERE vector.euclideanDistance(source.embedding, $n_embedding) < $threshold
-                        RETURN source.name AS source, r.name AS relationship, target.name AS target
-                        LIMIT $limit
-                        """
-                    else:
-                        query_fragment = f"""
-                        {match_fragment}
-                        WHERE vector.euclideanDistance(target.embedding, $n_embedding) < $threshold
-                        RETURN source.name AS source, r.name AS relationship, target.name AS target
-                        LIMIT $limit
-                        """
+            for direction in ["source", "target"]:
+                if direction == "source":
+                    query_fragment = f"""
+                    {match_fragment}
+                    WHERE vector.cosineDistance(source.embedding, $n_embedding) < $threshold
+                    RETURN source.name AS source, r.name AS relationship, target.name AS target
+                    LIMIT $limit
+                    """
+                else:
+                    query_fragment = f"""
+                    {match_fragment}
+                    WHERE vector.cosineDistance(target.embedding, $n_embedding) < $threshold
+                    RETURN source.name AS source, r.name AS relationship, target.name AS target
+                    LIMIT $limit
+                    """
 
-                    results.extend(self.falkordb_execute(query_fragment, parameters=params))
+                results.extend(self.falkordb_execute(query_fragment, parameters=params))
 
             for result in results:
                 result_relations.append(result)
@@ -529,7 +524,7 @@ class MemoryGraph:
 
         query = f"""
         MATCH (n:Entity {{{node_props_str}}})
-        WHERE vector.euclideanDistance(n.embedding, $embedding) < $threshold
+        WHERE vector.cosineDistance(n.embedding, $embedding) < $threshold
         RETURN n
         LIMIT 1
         """
