@@ -24,7 +24,7 @@ config = {
         "provider": "openai",
         "config": {
             "model": "text-embedding-3-large", 
-            "embedding_dims": 1536
+            "embedding_dims": 3072
         }
     },
     "graph_store": {
@@ -46,7 +46,7 @@ config = {
         "provider": "openai",
         "config": {
             "model": "text-embedding-3-large", 
-            "embedding_dims": 1536
+            "embedding_dims": 3072
         }
     },
     "graph_store": {

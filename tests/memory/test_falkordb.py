@@ -381,25 +381,3 @@ class TestFalkorDB:
             assert cleaned[0]["destination"] == "bob"
             assert cleaned[1]["source"] == "charlie"
             assert cleaned[1]["destination"] == "dave"
-
-
-def get_node_count(falkordb_memory):
-    """Helper function to get node count in tests"""
-    results = falkordb_memory.falkordb_execute(
-        """
-        MATCH (n)
-        RETURN COUNT(n) as count
-        """
-    )
-    return int(results[0]['count']) if results else 0
-
-
-def get_edge_count(falkordb_memory):
-    """Helper function to get edge count in tests"""
-    results = falkordb_memory.falkordb_execute(
-        """
-        MATCH (n)-[e]->(m)
-        RETURN COUNT(e) as count
-        """
-    )
-    return int(results[0]['count']) if results else 0
