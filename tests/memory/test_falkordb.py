@@ -70,9 +70,10 @@ class TestFalkorDB:
         mock_db = Mock()
         mock_graph = Mock()
         
-        # Mock query results structure
+        # Mock query results structure with header and result_set
         mock_result = Mock()
         mock_result.result_set = []
+        mock_result.header = []
         mock_graph.query.return_value = mock_result
         
         mock_db.select_graph.return_value = mock_graph
@@ -125,12 +126,11 @@ class TestFalkorDB:
 
         # Mock query results for add operations
         mock_result = Mock()
-        mock_record1 = Mock()
-        mock_record1._properties = {"source": "alice", "relationship": "knows", "target": "bob"}
-        mock_record2 = Mock()
-        mock_record2._properties = {"source": "bob", "relationship": "knows", "target": "charlie"}
-        
-        mock_result.result_set = [mock_record1]
+        mock_result.header = ["source", "relationship", "target"]
+        mock_result.result_set = [
+            ["alice", "knows", "bob"],
+            ["bob", "knows", "charlie"]
+        ]
         mock_graph.query.return_value = mock_result
 
         falkordb_memory = MemoryGraph(mock_config)
@@ -162,9 +162,8 @@ class TestFalkorDB:
 
         # Mock search results
         mock_result = Mock()
-        mock_record = Mock()
-        mock_record._properties = {"source": "alice", "relationship": "knows", "target": "bob"}
-        mock_result.result_set = [mock_record]
+        mock_result.header = ["source", "relationship", "target"]
+        mock_result.result_set = [["alice", "knows", "bob"]]
         mock_graph.query.return_value = mock_result
 
         falkordb_memory = MemoryGraph(mock_config)
@@ -194,9 +193,8 @@ class TestFalkorDB:
 
         # Mock delete results
         mock_result = Mock()
-        mock_record = Mock()
-        mock_record._properties = {"source": "alice", "relationship": "knows", "target": "bob"}
-        mock_result.result_set = [mock_record]
+        mock_result.header = ["source", "relationship", "target"]
+        mock_result.result_set = [["alice", "knows", "bob"]]
         mock_graph.query.return_value = mock_result
 
         falkordb_memory = MemoryGraph(mock_config)
@@ -227,16 +225,10 @@ class TestFalkorDB:
 
         # Mock get_all results
         mock_result = Mock()
-        mock_records = []
-        for i in range(3):
-            mock_record = Mock()
-            mock_record._properties = {
-                "source": f"entity_{i}",
-                "relationship": "knows",
-                "target": f"entity_{i+1}"
-            }
-            mock_records.append(mock_record)
-        mock_result.result_set = mock_records
+        mock_result.header = ["source", "relationship", "target"]
+        mock_result.result_set = [
+            [f"entity_{i}", "knows", f"entity_{i+1}"] for i in range(3)
+        ]
         mock_graph.query.return_value = mock_result
 
         falkordb_memory = MemoryGraph(mock_config)
@@ -342,9 +334,8 @@ class TestFalkorDB:
 
         # Mock search results
         mock_result = Mock()
-        mock_record = Mock()
-        mock_record._properties = {"source": "alice", "relationship": "knows", "target": "bob"}
-        mock_result.result_set = [mock_record]
+        mock_result.header = ["source", "relationship", "target"]
+        mock_result.result_set = [["alice", "knows", "bob"]]
         mock_graph.query.return_value = mock_result
 
         falkordb_memory = MemoryGraph(mock_config)

@@ -87,7 +87,37 @@ class MemoryGraph:
     def falkordb_execute(self, query, parameters=None):
         """Execute a Cypher query on FalkorDB and return results."""
         result = self.graph.query(query, parameters or {})
-        return [record._properties for record in result.result_set] if result.result_set else []
+        
+        if not result.result_set:
+            return []
+        
+        # Get column names from header
+        header = result.header
+        results = []
+        
+        for row in result.result_set:
+            if len(header) == 1 and len(row) == 1:
+                # Single scalar value
+                if isinstance(row[0], (str, int, float, bool)):
+                    results.append({header[0]: row[0]})
+                else:
+                    # For complex objects, try to get properties or return as-is
+                    try:
+                        results.append({header[0]: row[0].properties if hasattr(row[0], 'properties') else row[0]})
+                    except (AttributeError, TypeError):
+                        results.append({header[0]: row[0]})
+            else:
+                # Multiple columns, zip header with row values
+                row_dict = {}
+                for col_name, value in zip(header, row):
+                    # Handle complex objects (nodes, relationships) by extracting properties
+                    if hasattr(value, 'properties'):
+                        row_dict[col_name] = value.properties
+                    else:
+                        row_dict[col_name] = value
+                results.append(row_dict)
+        
+        return results
 
     def add(self, data, filters):
         """
