@@ -435,11 +435,12 @@ class MemoryGraph:
             MATCH (n:Entity {{{source_props_str}}})
             -[r:CONNECTED_TO {{name: $relationship_name}}]->
             (m:Entity {{{dest_props_str}}})
+            WITH n, r, m, n.name AS source_name, r.name AS relationship_name, m.name AS target_name
             DELETE r
             RETURN
-                n.name AS source,
-                r.name AS relationship,
-                m.name AS target
+                source_name AS source,
+                relationship_name AS relationship,
+                target_name AS target
             """
 
             result = self.falkordb_execute(cypher, parameters=params)
