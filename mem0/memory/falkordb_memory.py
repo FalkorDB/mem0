@@ -443,7 +443,7 @@ class MemoryGraph:
 
         search_output_string = format_entities(search_output)
         system_prompt, user_message = get_delete_messages(
-            data, search_output_string, user_identity
+            search_output_string, data, user_identity
         )
 
         _tools = [DELETE_MEMORY_TOOL_GRAPH]
