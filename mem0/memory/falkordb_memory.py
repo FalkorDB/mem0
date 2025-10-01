@@ -193,7 +193,8 @@ class MemoryGraph:
         tokenized_query = query.split(" ")
         bm25_scores = bm25.get_scores(tokenized_query)
 
-        formatted_results = format_entities(search_output)
+        # Convert to list of "src -- rel -- dst" lines
+        formatted_results = format_entities(search_output).splitlines()
         sorted_results = [
             x
             for _, x in sorted(
