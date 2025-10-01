@@ -31,7 +31,7 @@ class TestFalkorDB:
         config.graph_store.config.password = None
         config.graph_store.config.graph_name = "test_graph"
         config.graph_store.custom_prompt = None
-       config.graph_store.llm = None
+        config.graph_store.llm = None
 
         # Mock LLM config
         config.llm.provider = "mock_llm"
