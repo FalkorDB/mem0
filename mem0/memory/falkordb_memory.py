@@ -5,12 +5,16 @@ from mem0.memory.utils import format_entities
 try:
     import falkordb
 except ImportError:
-    raise ImportError("falkordb is not installed. Please install it using pip install falkordb")
+    raise ImportError(
+        "falkordb is not installed. Please install it using pip install falkordb"
+    )
 
 try:
     from rank_bm25 import BM25Okapi
 except ImportError:
-    raise ImportError("rank_bm25 is not installed. Please install it using pip install rank-bm25")
+    raise ImportError(
+        "rank_bm25 is not installed. Please install it using pip install rank-bm25"
+    )
 
 from mem0.graphs.tools import (
     DELETE_MEMORY_STRUCT_TOOL_GRAPH,
@@ -54,11 +58,19 @@ class MemoryGraph:
         self.llm_provider = "openai"
         if self.config.llm and self.config.llm.provider:
             self.llm_provider = self.config.llm.provider
-        if self.config.graph_store and self.config.graph_store.llm and self.config.graph_store.llm.provider:
+        if (
+            self.config.graph_store
+            and self.config.graph_store.llm
+            and self.config.graph_store.llm.provider
+        ):
             self.llm_provider = self.config.graph_store.llm.provider
         # Get LLM config with proper null checks
         llm_config = None
-        if self.config.graph_store and self.config.graph_store.llm and hasattr(self.config.graph_store.llm, "config"):
+        if (
+            self.config.graph_store
+            and self.config.graph_store.llm
+            and hasattr(self.config.graph_store.llm, "config")
+        ):
             llm_config = self.config.graph_store.llm.config
         elif hasattr(self.config.llm, "config"):
             llm_config = self.config.llm.config
@@ -72,51 +84,60 @@ class MemoryGraph:
         # Create vector index for Entity nodes
         try:
             self.graph.create_node_vector_index(
-                "Entity", "embedding", dim=self.embedding_dims, similarity_function="cosine"
+                "Entity",
+                "embedding",
+                dim=self.embedding_dims,
+                similarity_function="cosine",
             )
         except Exception as e:
             # Index might already exist
-            logger.debug(f"Vector index creation warning: {e}")
+            logger.debug("Vector index creation warning: %s", e)
 
         # Create range index for user_id for better performance
         try:
             self.graph.create_node_range_index("Entity", "user_id")
         except Exception as e:
-            logger.debug(f"Range index creation warning: {e}")
+            logger.debug("Range index creation warning: %s", e)
 
     def falkordb_execute(self, query, parameters=None):
         """Execute a Cypher query on FalkorDB and return results."""
         result = self.graph.query(query, parameters or {})
-        
+
         if not result.result_set:
             return []
-        
+
         # Get column names from header
         header = result.header
         results = []
-        
+
         for row in result.result_set:
             if len(header) == 1 and len(row) == 1:
+                col_name = header[0][1]
                 # Single scalar value
                 if isinstance(row[0], (str, int, float, bool)):
-                    results.append({header[0]: row[0]})
+                    results.append({col_name: row[0]})
                 else:
                     # For complex objects, try to get properties or return as-is
                     try:
-                        results.append({header[0]: row[0].properties if hasattr(row[0], 'properties') else row[0]})
+                        results.append(
+                            {
+                                col_name: (
+                                    row[0].properties
+                                    if hasattr(row[0], "properties")
+                                    else row[0]
+                                )
+                            }
+                        )
                     except (AttributeError, TypeError):
-                        results.append({header[0]: row[0]})
+                        results.append({col_name: row[0]})
             else:
                 # Multiple columns, zip header with row values
                 row_dict = {}
                 for col_name, value in zip(header, row):
-                    # Handle complex objects (nodes, relationships) by extracting properties
-                    if hasattr(value, 'properties'):
-                        row_dict[col_name] = value.properties
-                    else:
-                        row_dict[col_name] = value
+                    # Handle complex objects (nodes, relationships) by extracting header and value
+                    row_dict[col_name[1]] = value
                 results.append(row_dict)
-        
+
         return results
 
     def add(self, data, filters):
@@ -128,9 +149,15 @@ class MemoryGraph:
             filters (dict): A dictionary containing filters to be applied during the addition.
         """
         entity_type_map = self._retrieve_nodes_from_data(data, filters)
-        to_be_added = self._establish_nodes_relations_from_data(data, filters, entity_type_map)
-        search_output = self._search_graph_db(node_list=list(entity_type_map.keys()), filters=filters)
-        to_be_deleted = self._get_delete_entities_from_search_output(search_output, data, filters)
+        to_be_added = self._establish_nodes_relations_from_data(
+            data, filters, entity_type_map
+        )
+        search_output = self._search_graph_db(
+            node_list=list(entity_type_map.keys()), filters=filters
+        )
+        to_be_deleted = self._get_delete_entities_from_search_output(
+            search_output, data, filters
+        )
 
         deleted_entities = self._delete_entities(to_be_deleted, filters)
         added_entities = self._add_entities(to_be_added, filters, entity_type_map)
@@ -150,13 +177,16 @@ class MemoryGraph:
             list: List of search results containing graph data based on the query.
         """
         entity_type_map = self._retrieve_nodes_from_data(query, filters)
-        search_output = self._search_graph_db(node_list=list(entity_type_map.keys()), filters=filters, limit=limit)
+        search_output = self._search_graph_db(
+            node_list=list(entity_type_map.keys()), filters=filters, limit=limit
+        )
 
         if not search_output:
             return []
 
         search_outputs_sequence = [
-            [item["source"], item["relationship"], item["destination"]] for item in search_output
+            [item["source"], item["relationship"], item["destination"]]
+            for item in search_output
         ]
         bm25 = BM25Okapi(search_outputs_sequence)
 
@@ -164,7 +194,12 @@ class MemoryGraph:
         bm25_scores = bm25.get_scores(tokenized_query)
 
         formatted_results = format_entities(search_output)
-        sorted_results = [x for _, x in sorted(zip(bm25_scores, formatted_results), key=lambda x: x[0], reverse=True)]
+        sorted_results = [
+            x
+            for _, x in sorted(
+                zip(bm25_scores, formatted_results), key=lambda x: x[0], reverse=True
+            )
+        ]
         return sorted_results[:limit]
 
     def delete_all(self, filters):
@@ -213,10 +248,14 @@ class MemoryGraph:
         node_props_str = ", ".join(node_props)
 
         query = f"""
-        MATCH (source:Entity {{{node_props_str}}})-[r:CONNECTED_TO]->(target:Entity {{{node_props_str}}})
-        RETURN source.name AS source, r.name AS relationship, target.name AS target
+        MATCH (source:Entity {{{node_props_str}}})
+        -[r:CONNECTED_TO]->(target:Entity {{{node_props_str}}})
+        RETURN source.name AS source,
+               r.name AS relationship,
+               target.name AS target
         LIMIT $limit
         """
+
         results = self.falkordb_execute(query, parameters=params)
 
         final_results = []
@@ -229,7 +268,7 @@ class MemoryGraph:
                 }
             )
 
-        logger.info(f"Retrieved {len(final_results)} relationships")
+        logger.info("Retrieved %d relationships", len(final_results))
 
         return final_results
 
@@ -238,12 +277,18 @@ class MemoryGraph:
         _tools = [EXTRACT_ENTITIES_TOOL]
         if self.llm_provider in ["azure_openai_structured", "openai_structured"]:
             _tools = [EXTRACT_ENTITIES_STRUCT_TOOL]
+        # Build the system prompt in multiple shorter string literals to avoid overly long lines
+        user_id = filters["user_id"]
+        system_content = (
+            "You are a smart assistant who understands entities and their types in a given text. "
+            "If user message contains self reference such as 'I', 'me', 'my' etc. then use "
+            f"{user_id} as the source entity. Extract all the entities from the text. "
+            "***DO NOT*** answer the question itself if the given text is a question."
+        )
+
         search_results = self.llm.generate_response(
             messages=[
-                {
-                    "role": "system",
-                    "content": f"You are a smart assistant who understands entities and their types in a given text. If user message contains self reference such as 'I', 'me', 'my' etc. then use {filters['user_id']} as the source entity. Extract all the entities from the text. ***DO NOT*** answer the question itself if the given text is a question.",
-                },
+                {"role": "system", "content": system_content},
                 {"role": "user", "content": data},
             ],
             tools=_tools,
@@ -259,11 +304,18 @@ class MemoryGraph:
                     entity_type_map[item["entity"]] = item["entity_type"]
         except Exception as e:
             logger.exception(
-                f"Error in search tool: {e}, llm_provider={self.llm_provider}, search_results={search_results}"
+                "Error in search tool: %s, llm_provider=%s, search_results=%s",
+                e, self.llm_provider, search_results
             )
 
-        entity_type_map = {k.lower().replace(" ", "_"): v.lower().replace(" ", "_") for k, v in entity_type_map.items()}
-        logger.debug(f"Entity type map: {entity_type_map}\n search_results={search_results}")
+        entity_type_map = {
+            k.lower().replace(" ", "_"): v.lower().replace(" ", "_")
+            for k, v in entity_type_map.items()
+        }
+        logger.debug(
+            "Entity type map: %s\n search_results=%s",
+            entity_type_map, search_results
+        )
         return entity_type_map
 
     def _establish_nodes_relations_from_data(self, data, filters, entity_type_map):
@@ -279,16 +331,25 @@ class MemoryGraph:
         if self.config.graph_store.custom_prompt:
             system_content = EXTRACT_RELATIONS_PROMPT.replace("USER_ID", user_identity)
             # Add the custom prompt line if configured
-            system_content = system_content.replace("CUSTOM_PROMPT", f"4. {self.config.graph_store.custom_prompt}")
+            system_content = system_content.replace(
+                "CUSTOM_PROMPT", f"4. {self.config.graph_store.custom_prompt}"
+            )
             messages = [
                 {"role": "system", "content": system_content},
                 {"role": "user", "content": data},
             ]
         else:
             system_content = EXTRACT_RELATIONS_PROMPT.replace("USER_ID", user_identity)
+            user_content = (
+                "List of entities: "
+                + str(list(entity_type_map.keys()))
+                + ". \n\nText: "
+                + data
+            )
+
             messages = [
                 {"role": "system", "content": system_content},
-                {"role": "user", "content": f"List of entities: {list(entity_type_map.keys())}. \n\nText: {data}"},
+                {"role": "user", "content": user_content},
             ]
 
         _tools = [RELATIONS_TOOL]
@@ -302,55 +363,52 @@ class MemoryGraph:
 
         entities = []
         if extracted_entities.get("tool_calls"):
-            entities = extracted_entities["tool_calls"][0].get("arguments", {}).get("entities", [])
+            entities = (
+                extracted_entities["tool_calls"][0]
+                .get("arguments", {})
+                .get("entities", [])
+            )
 
         entities = self._remove_spaces_from_entities(entities)
-        logger.debug(f"Extracted entities: {entities}")
+        logger.debug("Extracted entities: %s", entities)
         return entities
 
     def _search_graph_db(self, node_list, filters, limit=100, threshold=None):
         """Search similar nodes among and their respective incoming and outgoing relations."""
         result_relations = []
 
-        params = {
-            "threshold": threshold if threshold else self.threshold,
-            "user_id": filters["user_id"],
-            "limit": limit,
-        }
-        # Build node properties for filtering
-        node_props = ["user_id: $user_id"]
+        user_id = filters["user_id"]
+
+        # Build filter conditions for additional filters
+        filter_conditions = ["n.user_id = $user_id"]
+        params = {"user_id": user_id}
+
         if filters.get("agent_id"):
-            node_props.append("agent_id: $agent_id")
+            filter_conditions.append("n.agent_id = $agent_id")
             params["agent_id"] = filters["agent_id"]
         if filters.get("run_id"):
-            node_props.append("run_id: $run_id")
+            filter_conditions.append("n.run_id = $run_id")
             params["run_id"] = filters["run_id"]
-        node_props_str = ", ".join(node_props)
+
+        filter_where = " AND ".join(filter_conditions)
 
         for node in node_list:
             n_embedding = self.embedding_model.embed(node)
+
+            # Use FalkorDB's vector index query procedure
+            # Query similar nodes and their relationships
+            query = f"""
+            CALL db.idx.vector.queryNodes('Entity', 'embedding', $limit, vecf32($n_embedding)) YIELD node AS n, score
+            WHERE {filter_where}
+            MATCH (n)-[r:CONNECTED_TO]-(connected:Entity)
+            WHERE connected.user_id = $user_id
+            RETURN n.name AS source, r.name AS relationship, connected.name AS target
+            """
+
             params["n_embedding"] = n_embedding
+            params["limit"] = limit
 
-            results = []
-            match_fragment = f"MATCH (source:Entity {{{node_props_str}}})-[r:CONNECTED_TO]->(target:Entity {{{node_props_str}}})"
-
-            for direction in ["source", "target"]:
-                if direction == "source":
-                    query_fragment = f"""
-                    {match_fragment}
-                    WHERE vector.cosineDistance(source.embedding, $n_embedding) < $threshold
-                    RETURN source.name AS source, r.name AS relationship, target.name AS target
-                    LIMIT $limit
-                    """
-                else:
-                    query_fragment = f"""
-                    {match_fragment}
-                    WHERE vector.cosineDistance(target.embedding, $n_embedding) < $threshold
-                    RETURN source.name AS source, r.name AS relationship, target.name AS target
-                    LIMIT $limit
-                    """
-
-                results.extend(self.falkordb_execute(query_fragment, parameters=params))
+            results = self.falkordb_execute(query, parameters=params)
 
             for result in results:
                 result_relations.append(result)
@@ -369,7 +427,7 @@ class MemoryGraph:
                 }
                 unique_relations.append(final_relation)
 
-        logger.info(f"Search output: {len(unique_relations)} unique relations found")
+        logger.info("Search output: %d unique relations found", len(unique_relations))
         return unique_relations
 
     def _get_delete_entities_from_search_output(self, search_output, data, filters):
@@ -383,22 +441,31 @@ class MemoryGraph:
             user_identity += f", run_id: {filters['run_id']}"
 
         search_output_string = format_entities(search_output)
-        prompt = get_delete_messages(data, search_output_string, user_identity)
+        system_prompt, user_message = get_delete_messages(
+            data, search_output_string, user_identity
+        )
 
         _tools = [DELETE_MEMORY_TOOL_GRAPH]
         if self.llm_provider in ["azure_openai_structured", "openai_structured"]:
             _tools = [DELETE_MEMORY_STRUCT_TOOL_GRAPH]
 
         extracted_entities = self.llm.generate_response(
-            messages=prompt,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
             tools=_tools,
         )
         to_be_deleted = []
         if extracted_entities.get("tool_calls"):
-            to_be_deleted = extracted_entities["tool_calls"][0].get("arguments", {}).get("entities", [])
+            to_be_deleted = (
+                extracted_entities["tool_calls"][0]
+                .get("arguments", {})
+                .get("entities", [])
+            )
 
         to_be_deleted = self._remove_spaces_from_entities(to_be_deleted)
-        logger.debug(f"To be deleted: {to_be_deleted}")
+        logger.debug("To be deleted: %s", to_be_deleted)
         return to_be_deleted
 
     def _delete_entities(self, to_be_deleted, filters):
@@ -494,19 +561,19 @@ class MemoryGraph:
             ON CREATE SET
                 source.created = timestamp(),
                 source.mentions = 1,
-                source.embedding = $source_embedding
+                source.embedding = vecf32($source_embedding)
             ON MATCH SET
                 source.mentions = coalesce(source.mentions, 0) + 1,
-                source.embedding = $source_embedding
+                source.embedding = vecf32($source_embedding)
             WITH source
             MERGE (destination:Entity {{{dest_merge_props_str}}})
             ON CREATE SET
                 destination.created = timestamp(),
                 destination.mentions = 1,
-                destination.embedding = $destination_embedding
+                destination.embedding = vecf32($destination_embedding)
             ON MATCH SET
                 destination.mentions = coalesce(destination.mentions, 0) + 1,
-                destination.embedding = $destination_embedding
+                destination.embedding = vecf32($destination_embedding)
             WITH source, destination
             MERGE (source)-[r:CONNECTED_TO {{name: $relationship_name}}]->(destination)
             ON CREATE SET
@@ -539,23 +606,24 @@ class MemoryGraph:
         """Search for source nodes with similar embeddings."""
         params = {
             "embedding": embedding,
-            "threshold": threshold,
             "user_id": filters["user_id"],
         }
 
-        # Build node properties for filtering
-        node_props = ["user_id: $user_id"]
+        # Build filter conditions
+        filter_conditions = ["n.user_id = $user_id"]
         if filters.get("agent_id"):
-            node_props.append("agent_id: $agent_id")
+            filter_conditions.append("n.agent_id = $agent_id")
             params["agent_id"] = filters["agent_id"]
         if filters.get("run_id"):
-            node_props.append("run_id: $run_id")
+            filter_conditions.append("n.run_id = $run_id")
             params["run_id"] = filters["run_id"]
-        node_props_str = ", ".join(node_props)
 
+        filter_where = " AND ".join(filter_conditions)
+
+        # Use FalkorDB's vector index query procedure
         query = f"""
-        MATCH (n:Entity {{{node_props_str}}})
-        WHERE vector.cosineDistance(n.embedding, $embedding) < $threshold
+        CALL db.idx.vector.queryNodes('Entity', 'embedding', 1, vecf32($embedding)) YIELD node AS n, score
+        WHERE {filter_where}
         RETURN n
         LIMIT 1
         """
