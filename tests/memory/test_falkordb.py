@@ -126,7 +126,8 @@ class TestFalkorDB:
 
         # Mock query results for add operations
         mock_result = Mock()
-        mock_result.header = ["source", "relationship", "target"]
+        # Header should be list of tuples: (type, column_name)
+        mock_result.header = [(0, "source"), (0, "relationship"), (0, "target")]
         mock_result.result_set = [
             ["alice", "knows", "bob"],
             ["bob", "knows", "charlie"]
@@ -162,7 +163,8 @@ class TestFalkorDB:
 
         # Mock search results
         mock_result = Mock()
-        mock_result.header = ["source", "relationship", "target"]
+        # Header should be list of tuples: (type, column_name)
+        mock_result.header = [(0, "source"), (0, "relationship"), (0, "target")]
         mock_result.result_set = [["alice", "knows", "bob"]]
         mock_graph.query.return_value = mock_result
 
@@ -193,7 +195,8 @@ class TestFalkorDB:
 
         # Mock delete results
         mock_result = Mock()
-        mock_result.header = ["source", "relationship", "target"]
+        # Header should be list of tuples: (type, column_name)
+        mock_result.header = [(0, "source"), (0, "relationship"), (0, "target")]
         mock_result.result_set = [["alice", "knows", "bob"]]
         mock_graph.query.return_value = mock_result
 
@@ -225,7 +228,8 @@ class TestFalkorDB:
 
         # Mock get_all results
         mock_result = Mock()
-        mock_result.header = ["source", "relationship", "target"]
+        # Header should be list of tuples: (type, column_name)
+        mock_result.header = [(0, "source"), (0, "relationship"), (0, "target")]
         mock_result.result_set = [
             [f"entity_{i}", "knows", f"entity_{i+1}"] for i in range(3)
         ]
@@ -334,7 +338,8 @@ class TestFalkorDB:
 
         # Mock search results
         mock_result = Mock()
-        mock_result.header = ["source", "relationship", "target"]
+        # Header should be list of tuples: (type, column_name)
+        mock_result.header = [(0, "source"), (0, "relationship"), (0, "target")]
         mock_result.result_set = [["alice", "knows", "bob"]]
         mock_graph.query.return_value = mock_result
 
